@@ -11,7 +11,7 @@ def parse_arguments():
     parser = argparse.ArgumentParser(description='Adding GPS to Exif')
     parser.add_argument('fpath', help='Photo file path or directory')
     parser.add_argument('gpsfile', help='Path to Google location history(Records.json)')
-    parser.add_argument('-f', '--filter', help='File filter (ex. *.JPG, *.DNG)')
+    parser.add_argument('-f', '--filter', help='File filter (ex. DNG)', default='JPG')
     return parser.parse_args()
 
 def main(args):
@@ -40,8 +40,8 @@ def main(args):
     elif os.path.isdir(photo_path):
         filter = args.filter
         if filter is None:
-            filter = '*.*'
-        path = photo_path + '/**/' + filter
+            filter = 'JPG'
+        path = photo_path + '/**/*.' + filter
         files = glob.glob(path, recursive=True)
         
     # カウンターを用意

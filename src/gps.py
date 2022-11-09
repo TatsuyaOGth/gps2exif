@@ -2,7 +2,7 @@ import json
 import datetime
 from time import time_ns
 
-class LocationHistory:
+class GoogleLocationHistory:
 
     data = []
 

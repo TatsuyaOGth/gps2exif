@@ -4,6 +4,16 @@ from time import time_ns
 
 class ExifToolSubprocess:
     
+    def __init__(self):
+        self.et = ExifToolHelper()
+        
+    def __enter__(self):
+        self.et.run()
+        return self
+
+    def __exit__(self, exception_type, exception_value, traceback):
+        self.et.terminate()
+    
     def get_datetime_original(self, fname):
         dt_s = self._get_exif_data(fname, 'DateTimeOriginal')
         if dt_s is None:
@@ -37,35 +47,35 @@ class ExifToolSubprocess:
         self._set_exif_data(fname, 'GPSDateStamp', dt.strftime('%Y:%m:%d'))
         self._set_exif_data(fname, 'GPSTimeStamp', dt.strftime('%H:%M:%S'))
         
+    def set_keywords(self, fname, keyword):
+        self._set_exif_data(fname, 'Keywords', [keyword])
+        
     def print_all(self, fname):
-        with ExifToolHelper() as et:
-            for d in et.get_metadata(fname):
-                for k, v in d.items():
-                    print(f'{k} = {v}')
+        for d in self.et.get_metadata(fname):
+            for k, v in d.items():
+                print(f'{k} = {v}')
             
     def _get_exif_data(self, fname, tag_name):
-        with ExifToolHelper() as et:
-            tags = et.get_tags(fname, tag_name)
+        tags = self.et.get_tags(fname, tag_name)
 
-            if tags is None:
-                return None
+        if tags is None:
+            return None
 
-            if len(tags) == 0:
-                return None
+        if len(tags) == 0:
+            return None
 
-            key = 'EXIF:' + tag_name
-            if key not in tags[0].keys():
-                return None
+        key = 'EXIF:' + tag_name
+        if key not in tags[0].keys():
+            return None
 
-            return str(tags[0][key])
-            
+        return str(tags[0][key])
+        
     def _set_exif_data(self, fname, tag_name, value):
-        with ExifToolHelper() as et:
-            et.set_tags(
-                fname,
-                tags={tag_name: value},
-                params=['-P', '-overwrite_original']
-            )
+        self.et.set_tags(
+            fname,
+            tags={tag_name: value},
+            params=['-P', '-overwrite_original']
+        )
 
 
 

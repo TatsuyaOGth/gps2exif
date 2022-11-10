@@ -19,7 +19,6 @@ def main(args):
     
     # 必要なクラスのインスタンス化
     loc = GoogleLocationHistory()
-    exif = ExifToolSubprocess()
     dt_helper = DateTimeHelper()
     
     # このファイルのパスを取得
@@ -55,29 +54,31 @@ def main(args):
         if os.path.isdir(f):
             continue
         
-        # すでにGPS情報がある場合は無視する
-        gps_org = exif.get_gps_info(f)
-        if gps_org is not None:
-            print(f'{os.path.basename(f)} already has GPS Info, {gps_org}')
-            n_has += 1
-            continue
-        
-        # ロケーション履歴から撮影時刻と近いGPS情報を検索
-        dt_org = exif.get_datetime_original(f)
-        gps = loc.find_nearest(dt_org)
-        if gps is not None:
-            print(
-                os.path.basename(f),
-                'set new GPS Info',
-                gps[0].strftime('%y/%m/%d-%H:%M:%S'),
-                gps[1],
-                gps[2])
-            dt_utc = dt_helper.jst_to_utc_with_time(gps[0])
-            exif.set_gps_info(f, dt_utc, gps[1], gps[2])
-            n_new += 1
-        else:
-            print(os.path.basename(f), 'Could not find nearest data')
-            n_miss += 1
+        with ExifToolSubprocess() as exif:
+            # すでにGPS情報がある場合は無視する
+            gps_org = exif.get_gps_info(f)
+            if gps_org is not None:
+                print(f'{os.path.basename(f)} already has GPS Info, {gps_org}')
+                n_has += 1
+                continue
+            
+            # ロケーション履歴から撮影時刻と近いGPS情報を検索
+            dt_org = exif.get_datetime_original(f)
+            gps = loc.find_nearest(dt_org)
+            if gps is not None:
+                print(
+                    os.path.basename(f),
+                    'set new GPS Info',
+                    gps[0].strftime('%y/%m/%d-%H:%M:%S'),
+                    gps[1],
+                    gps[2])
+                dt_utc = dt_helper.jst_to_utc_with_time(gps[0])
+                exif.set_gps_info(f, dt_utc, gps[1], gps[2])
+                exif.set_keywords(f, 'gps2exif')
+                n_new += 1
+            else:
+                print(os.path.basename(f), 'Could not find nearest data')
+                n_miss += 1
     
     # 処理結果を出力
     print(f'GPS added = {n_new}, Already has GPS = {n_has}, Error = {n_miss}')

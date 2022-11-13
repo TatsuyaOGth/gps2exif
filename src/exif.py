@@ -16,7 +16,7 @@ class ExifToolSubprocess:
     
     def get_datetime_original(self, fname):
         dt_s = self._get_exif_data(fname, 'DateTimeOriginal')
-        if dt_s is None:
+        if not dt_s:
             return None
         dt = datetime.strptime(dt_s, '%Y:%m:%d %H:%M:%S')
         dt_jst = dt.replace(tzinfo=timezone(timedelta(hours=9)))
@@ -25,14 +25,14 @@ class ExifToolSubprocess:
     def get_gps_info(self, fname):
         lat = self._get_exif_data(fname, 'GPSLatitude')
         lon = self._get_exif_data(fname, 'GPSLongitude')
-        if lat is None or lon is None:
+        if not lat or not lon:
             return None
         return (float(lat), float(lon))
         
     def get_gps_datetime(self, fname):
         dt_s = self._get_exif_data(fname, 'GPSDateStamp')
         tm_s = self._get_exif_data(fname, 'GPSTimeStamp')
-        if dt_s is None or tm_s is None:
+        if not dt_s or not tm_s:
             return None
         dt = datetime.strptime(dt_s, '%Y:%m:%d')
         tm = datetime.strptime(tm_s, '%H:%M:%S')

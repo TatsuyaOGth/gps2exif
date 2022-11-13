@@ -1,6 +1,7 @@
 import os
 import glob
 import argparse
+import traceback
 from gps import GoogleLocationHistory
 from exif import ExifToolSubprocess, DateTimeHelper
 
@@ -114,7 +115,7 @@ def main(args):
                     print(indent, 'could not find nearest data')
                     n_notdata += 1
         except Exception as ex:
-            print(indent, ex)
+            print('[ERROR]', traceback.format_exc())
             n_err += 1
             
     

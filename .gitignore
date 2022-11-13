@@ -164,3 +164,4 @@ cython_debug/
 .venv/*
 .venv39/*
 data/*
+sandbox/*

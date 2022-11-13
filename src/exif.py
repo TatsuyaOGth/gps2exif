@@ -48,14 +48,18 @@ class ExifToolSubprocess:
         self._set_exif_data(fname, 'GPSTimeStamp', dt.strftime('%H:%M:%S'))
         
     def set_keywords(self, fname, keyword):
-        self._set_exif_data(fname, 'Keywords', [keyword])
+        self._add_keyword_if_not_has(fname, 'Keywords', keyword, 'IPTC')
+        self._add_keyword_if_not_has(fname, 'Subject', keyword, 'XMP')
+        
+    def get_keywords(self, fname):
+        return self._get_exif_data(fname, 'Keywords', 'IPTC')
         
     def print_all(self, fname):
         for d in self.et.get_metadata(fname):
             for k, v in d.items():
                 print(f'{k} = {v}')
             
-    def _get_exif_data(self, fname, tag_name):
+    def _get_exif_data(self, fname, tag_name, tag_header = 'EXIF'):
         tags = self.et.get_tags(fname, tag_name)
 
         if tags is None:
@@ -64,11 +68,11 @@ class ExifToolSubprocess:
         if len(tags) == 0:
             return None
 
-        key = 'EXIF:' + tag_name
+        key = tag_header + ':' + tag_name
         if key not in tags[0].keys():
             return None
 
-        return str(tags[0][key])
+        return tags[0][key]
         
     def _set_exif_data(self, fname, tag_name, value):
         self.et.set_tags(
@@ -76,6 +80,18 @@ class ExifToolSubprocess:
             tags={tag_name: value},
             params=['-P', '-overwrite_original']
         )
+        
+    def _add_keyword_if_not_has(self, fname, tag_name, keyword, tag_header):
+        words = self._get_exif_data(fname, tag_name, tag_header)
+        if words is None:
+            self._set_exif_data(fname, tag_name, [keyword])
+        elif type(words) is str:
+            if words != keyword:
+                self._set_exif_data(fname, tag_name, [words, keyword])
+        elif type(words) is list:
+            if keyword not in words:
+                words.append(keyword)
+                self._set_exif_data(fname, tag_name, words)
 
 
 

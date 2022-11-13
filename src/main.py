@@ -4,15 +4,29 @@ import argparse
 from gps import GoogleLocationHistory
 from exif import ExifToolSubprocess, DateTimeHelper
 
-# LOCATION_FILE_PATH = '../data/Records.json'
-# PHOTOS_DICTIONARY_PATH = '../data/test/'
+
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description='Adding GPS to Exif')
-    parser.add_argument('fpath', help='Photo file path or directory')
-    parser.add_argument('gpsfile', help='Path to Google location history(Records.json)')
-    parser.add_argument('-f', '--filter', help='File filter (ex. DNG)', default='JPG')
+    parser.add_argument('fpath', help='Photo file path or directory.', type=str)
+    parser.add_argument('gpsfile', help='Path to Google location history(Records.json)', type=str)
+    parser.add_argument('-f', '--filter', help='File filter (ex. JPG, DNG. default = \'*\')', default='*', type=str)
+    parser.add_argument(
+        '-o', '--overwrite', help='Overwrite GPS if has specific keyword (footprint) that this tool wrote in metadata.', action='store_true')
+    parser.add_argument(
+        '-k', '--keyword', help='Additional keyword (footprint) when added new GPS (default = gps2exif).', default='gps2exif', type=str)
     return parser.parse_args()
+    
+def has_footprint(args, exif, f) -> bool:
+    if args.overwrite:
+        keywords = exif.get_keywords(f)
+        if keywords is not None:
+            if type(keywords) is str:
+                return str(args.keyword) == keywords
+            elif type(keywords) is list:
+                return str(args.keyword) in keywords
+    return False
+                
 
 def main(args):
     print(f'Input path = {args.fpath}, GPS data file = {args.gpsfile}')
@@ -57,13 +71,18 @@ def main(args):
         with ExifToolSubprocess() as exif:
             # すでにGPS情報がある場合は無視する
             gps_org = exif.get_gps_info(f)
-            if gps_org is not None:
-                print(f'{os.path.basename(f)} already has GPS Info, {gps_org}')
+            if gps_org is not None and has_footprint(args, exif, f) == False:
+                print(os.path.basename(f), 'already has GPS Info', {gps_org})
                 n_has += 1
                 continue
             
-            # ロケーション履歴から撮影時刻と近いGPS情報を検索
+            # 撮影時刻を取得
             dt_org = exif.get_datetime_original(f)
+            if dt_org is None:
+                print(os.path.basename(f), 'Datetime original is not found')
+                continue
+            
+            # ロケーション履歴から撮影時刻と近いGPS情報を検索
             gps = loc.find_nearest(dt_org)
             if gps is not None:
                 print(
@@ -74,7 +93,7 @@ def main(args):
                     gps[2])
                 dt_utc = dt_helper.jst_to_utc_with_time(gps[0])
                 exif.set_gps_info(f, dt_utc, gps[1], gps[2])
-                exif.set_keywords(f, 'gps2exif')
+                exif.set_keywords(f, str(args.keyword))
                 n_new += 1
             else:
                 print(os.path.basename(f), 'Could not find nearest data')

@@ -10,6 +10,7 @@
             "request": "launch",
             "program": "src/main.py",
             "console": "integratedTerminal",
+            "args": ["../data/test/", "../data/Records.json"],
             "justMyCode": true
         },
         {

@@ -12,6 +12,9 @@ class ExifToolSubprocess:
         return self
 
     def __exit__(self, exception_type, exception_value, traceback):
+        if exception_value is not None:
+            print('STDERR', exception_value.stderr)
+            print('STDOUT', exception_value.stdout)
         self.et.terminate()
     
     def get_datetime_original(self, fname):

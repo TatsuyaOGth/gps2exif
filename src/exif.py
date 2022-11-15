@@ -1,4 +1,5 @@
 from exiftool import ExifToolHelper
+from exiftool.exceptions import ExifToolExecuteError
 from datetime import datetime, timezone, timedelta
 from time import time_ns
 
@@ -12,7 +13,7 @@ class ExifToolSubprocess:
         return self
 
     def __exit__(self, exception_type, exception_value, traceback):
-        if exception_value is not None:
+        if exception_type is ExifToolExecuteError:
             print('STDERR', exception_value.stderr)
             print('STDOUT', exception_value.stdout)
         self.et.terminate()

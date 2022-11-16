@@ -28,7 +28,15 @@ def has_footprint(args, exif, f) -> bool:
             elif type(keywords) is list:
                 return str(args.keyword) in keywords
     return False
-                
+
+def in_atdir(path):
+    norm_path = os.path.normcase(os.path.normcase(os.path.split(path)[0]))
+    dirs = str(norm_path).split(os.path.sep)
+    for d in dirs:
+        if d.startswith('@'):
+            return True
+    return False
+    
 
 def main(args):
     # 必要なクラスのインスタンス化
@@ -53,9 +61,12 @@ def main(args):
     elif os.path.isdir(photo_path):
         filter = args.filter
         if filter is None:
-            filter = 'JPG'
+            filter = '*'
         path = photo_path + '/**/*.' + filter
-        files = glob.glob(path, recursive=True)
+        files = [
+            p for p in glob.glob(path, recursive=True) 
+            if os.path.isfile(p) and not in_atdir(p)
+        ]
         
     # ログ用の変数
     n_files = len(files)
@@ -64,14 +75,14 @@ def main(args):
     n_notdata = 0
     n_err = 0
     i = -1
-    indent = '      '
+    indent = '  '
     
     print(f'Photos={args.fpath}, GPS file={args.gpsfile}, N={n_files}')
     
     # 写真を1枚ずつ読み込んで処理
     for f in files:
         i += 1
-        print(f, f'({i}/{n_files})')
+        print(f'{i}/{n_files}:', f)
         
         try:
             # ディレクトリは無視
@@ -112,7 +123,7 @@ def main(args):
                             print(indent, 'keyword added', args.keyword)
                     n_new += 1
                 else:
-                    print(indent, 'could not find nearest data')
+                    print(indent, 'could not find nearest data', dt_org)
                     n_notdata += 1
         except Exception as ex:
             print('[ERROR]', traceback.format_exc())

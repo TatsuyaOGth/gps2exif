@@ -7,6 +7,7 @@ class ExifToolSubprocess:
     
     def __init__(self):
         self.et = ExifToolHelper()
+        self.no_write = False
         
     def __enter__(self):
         self.et.run()
@@ -43,6 +44,8 @@ class ExifToolSubprocess:
         return datetime.combine(dt.date(), tm.time(), tzinfo=timezone.utc)
         
     def set_gps_info(self, fname, dt: datetime, lat, lon):
+        if self.no_write:
+            return
         self._set_exif_data(fname, 'GPSVersionID', '2 3 0 0')
         self._set_exif_data(fname, 'GPSLatitudeRef', 'N')
         self._set_exif_data(fname, 'GPSLongitudeRef', 'E')
@@ -52,6 +55,8 @@ class ExifToolSubprocess:
         self._set_exif_data(fname, 'GPSTimeStamp', dt.strftime('%H:%M:%S'))
         
     def set_keywords(self, fname, keyword):
+        if self.no_write:
+            return
         self._add_keyword_if_not_has(fname, 'Keywords', keyword, 'IPTC')
         self._add_keyword_if_not_has(fname, 'Subject', keyword, 'XMP')
         
@@ -79,6 +84,8 @@ class ExifToolSubprocess:
         return tags[0][key]
         
     def _set_exif_data(self, fname, tag_name, value):
+        if self.no_write:
+            return
         self.et.set_tags(
             fname,
             tags={tag_name: value},

@@ -8,15 +8,37 @@ from exif import ExifToolSubprocess, DateTimeHelper
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description='Adding GPS to Exif')
-    parser.add_argument('fpath', help='Photo file path or directory.', type=str)
-    parser.add_argument('gpsfile', help='Path to Google location history(Records.json)', type=str)
-    parser.add_argument('-f', '--filter', help='File filter (ex. JPG, DNG. default = \'*\')', default='*', type=str)
     parser.add_argument(
-        '-O', '--overwrite', help='Overwrite GPS if has specific keyword (footprint) that this tool wrote in metadata.', action='store_true')
+        'fpath', 
+        help='Photo file path or directory.', 
+        type=str)
     parser.add_argument(
-        '-F', '--footprint', help='Adding specific keyword (footprint) when add new GPS.', action='store_true')
+        'gpsfile', 
+        help='Path to Google location history(Records.json)', 
+        type=str)
     parser.add_argument(
-        '-k', '--keyword', help='Additional keyword (footprint) when added new GPS (default = gps2exif).', default='gps2exif', type=str)
+        '-f', '--filter', 
+        help='File filter (ex. JPG, DNG. default = \'*\')', 
+        default='*', 
+        type=str)
+    parser.add_argument(
+        '-O', '--overwrite', 
+        help='Overwrite GPS if has specific keyword (footprint) that this tool wrote in metadata.', 
+        action='store_true')
+    parser.add_argument(
+        '-F', '--footprint', 
+        help='Adding specific keyword (footprint) when add new GPS.', 
+        action='store_true')
+    parser.add_argument(
+        '-k', '--keyword', 
+        help='Additional keyword (footprint) when added new GPS (default = gps2exif).', 
+        default='gps2exif', 
+        type=str)
+    parser.add_argument(
+        '-R', '--readonly',
+        help='Run without writing to exif.',
+        action='store_true')
+    
     return parser.parse_args()
     
 def has_footprint(args, exif, f) -> bool:
@@ -39,19 +61,19 @@ def in_atdir(path):
     
 
 def main(args):
+    if args.readonly:
+        print('*** READ ONLY MODE ***')
+    
     # 必要なクラスのインスタンス化
     loc = GoogleLocationHistory()
     dt_helper = DateTimeHelper()
     
-    # このファイルのパスを取得
-    mydir = os.path.dirname(os.path.abspath(__file__))
-    
     # ロケーション履歴を読み込み
-    loc_file_path = os.path.join(mydir, args.gpsfile)
+    loc_file_path = args.gpsfile
     loc.load(loc_file_path)
     
     # 写真ファイルへのパス（ディレクトリの場合は直下のファイル
-    photo_path = os.path.join(mydir, args.fpath)
+    photo_path = args.fpath
     if os.path.exists(photo_path) == False:
         print(f'Could not find file or directory: {photo_path}')
         return
@@ -77,12 +99,12 @@ def main(args):
     i = -1
     indent = '  '
     
-    print(f'Photos={args.fpath}, GPS file={args.gpsfile}, N={n_files}')
+    print(f'Execute on {os.getcwd()}, Photos={args.fpath}, GPS file={args.gpsfile}, N={n_files}')
     
     # 写真を1枚ずつ読み込んで処理
     for f in files:
         i += 1
-        print(f'{i}/{n_files}:', f)
+        print(f'({i}/{n_files})', os.path.relpath(f))
         
         try:
             # ディレクトリは無視
@@ -91,6 +113,8 @@ def main(args):
                 continue
             
             with ExifToolSubprocess() as exif:
+                exif.no_write = args.readonly
+                
                 # すでにGPS情報がある場合は無視する
                 gps_org = exif.get_gps_info(f)
                 if gps_org is not None and has_footprint(args, exif, f) == False:

@@ -26,8 +26,8 @@ def parse_arguments():
     parser.add_argument(
         '-t', '--offsettime',
         help='Offset time original to be set if not in Exif., UTC is 0, default is 9(JST)',
-        default='9',
-        type=int)
+        default='9.0',
+        type=float)
     parser.add_argument(
         '-O', '--overwrite', 
         help='Overwrite GPS if has specific keyword (footprint) that this tool wrote in metadata.', 

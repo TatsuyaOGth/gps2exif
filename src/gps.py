@@ -12,25 +12,25 @@ class GoogleLocationHistory:
         locs = records['locations']
         self.data = []
         for loc in locs:
-            dt_jst = self._get_timestamp_jst(loc)
+            dt_utc = self._get_timestamp(loc)
             lat = self._e7_to_number(float(loc['latitudeE7']))
             lon = self._e7_to_number(float(loc['longitudeE7']))
-            self.data.append((dt_jst, lat, lon))
+            self.data.append((dt_utc, lat, lon))
             
-    def find_nearest(self, dt):
+    def find_nearest(self, dt_utc):
         for d in self.data:
-            if d[0] > dt:
+            if d[0] > dt_utc:
                 return d
         return None
 
     def print(self):
         for key in self.data.keys():
             print(key, self.data.get(key))
-
-    def _get_timestamp_jst(self, loc):
-        isodatetime = str(loc['timestamp']).replace('Z', '+09:00')
+        
+    def _get_timestamp(self, loc):
+        isodatetime = str(loc['timestamp']).replace('Z', '+00:00')
         dt = datetime.datetime.fromisoformat(isodatetime)
-        return dt + datetime.timedelta(hours=9)
+        return dt
 
     def _e7_to_number(self, e7format):
         return e7format / 1e7

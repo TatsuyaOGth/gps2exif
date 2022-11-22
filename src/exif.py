@@ -26,8 +26,18 @@ class ExifToolSubprocess:
         dt = datetime.strptime(dt_s, '%Y:%m:%d %H:%M:%S')
         dt_jst = dt.replace(tzinfo=timezone(timedelta(hours=9)))
         return dt_jst
+        
+    def get_offsettime_original(self, fname):
+        ot = self._get_exif_data(fname, 'OffsetTimeOriginal')
+        if not ot:
+            return None
+        ot = str(ot)
+        sp = ot.split(':')
+        h = float(sp[0])
+        m = float(sp[1]) / 60
+        return h + m
             
-    def get_gps_info(self, fname):
+    def get_gps_position(self, fname):
         lat = self._get_exif_data(fname, 'GPSLatitude')
         lon = self._get_exif_data(fname, 'GPSLongitude')
         if not lat or not lon:
@@ -103,15 +113,3 @@ class ExifToolSubprocess:
             if keyword not in words:
                 words.append(keyword)
                 self._set_exif_data(fname, tag_name, words)
-
-
-
-class DateTimeHelper:
-    
-    def jst_to_utc_with_time(self, dt: datetime) -> datetime:
-        dt_utc = dt.replace(tzinfo=timezone.utc)
-        return dt_utc - timedelta(hours=9)
-        
-    def utc_to_jst_with_time(self, dt: datetime) -> datetime:
-        dt_jst = dt.replace(tzinfo=timezone(timedelta(hours=9)))
-        return dt_jst + timedelta(hours=9)

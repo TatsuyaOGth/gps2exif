@@ -3,8 +3,10 @@ import glob
 import argparse
 import traceback
 from gps import GoogleLocationHistory
-from exif import ExifToolSubprocess, DateTimeHelper
+from exif import ExifToolSubprocess
+from utils import DateTimeHelper
 
+FOOTPRINT_KEYWORD = 'gps2exif'
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description='Adding GPS to Exif')
@@ -22,6 +24,11 @@ def parse_arguments():
         default='*', 
         type=str)
     parser.add_argument(
+        '-t', '--offsettime',
+        help='Offset time original to be set if not in Exif., UTC is 0, default is 9(JST)',
+        default='9',
+        type=int)
+    parser.add_argument(
         '-O', '--overwrite', 
         help='Overwrite GPS if has specific keyword (footprint) that this tool wrote in metadata.', 
         action='store_true')
@@ -30,26 +37,19 @@ def parse_arguments():
         help='Adding specific keyword (footprint) when add new GPS.', 
         action='store_true')
     parser.add_argument(
-        '-k', '--keyword', 
-        help='Additional keyword (footprint) when added new GPS (default = gps2exif).', 
-        default='gps2exif', 
-        type=str)
-    parser.add_argument(
         '-R', '--readonly',
         help='Run without writing to exif.',
         action='store_true')
-    
     return parser.parse_args()
     
-def has_footprint(args, exif, f) -> bool:
-    if args.overwrite:
-        keywords = exif.get_keywords(f)
-        if keywords is not None:
-            if type(keywords) is str:
-                return str(args.keyword) == keywords
-            elif type(keywords) is list:
-                return str(args.keyword) in keywords
-    return False
+    
+def has_footprint(exif, f) -> bool:
+    keywords = exif.get_keywords(f)
+    if keywords is not None:
+        if type(keywords) is str:
+            return str(FOOTPRINT_KEYWORD) == keywords
+        elif type(keywords) is list:
+            return str(FOOTPRINT_KEYWORD) in keywords
 
 def in_atdir(path):
     norm_path = os.path.normcase(os.path.normcase(os.path.split(path)[0]))
@@ -96,7 +96,7 @@ def main(args):
     n_has = 0
     n_notdata = 0
     n_err = 0
-    i = -1
+    i = 0
     indent = '  '
     
     print(f'Execute on {os.getcwd()}, Photos={args.fpath}, GPS file={args.gpsfile}, N={n_files}')
@@ -116,46 +116,57 @@ def main(args):
                 exif.no_write = args.readonly
                 
                 # すでにGPS情報がある場合は無視する
-                gps_org = exif.get_gps_info(f)
-                if gps_org is not None and has_footprint(args, exif, f) == False:
-                    print(indent, 'already has GPS', gps_org)
-                    n_has += 1
-                    continue
+                gps_org = exif.get_gps_position(f)
+                if gps_org is not None:
+                    if args.overwrite and has_footprint(exif, f):
+                        print(indent, 'OVERWRITE GPS')
+                    else:
+                        print(indent, 'already has GPS', gps_org)
+                        n_has += 1
+                        continue
                 
                 # 撮影時刻を取得
                 dt_org = exif.get_datetime_original(f)
                 if dt_org is None:
-                    print(indent, 'datetime original is not found')
+                    print(indent, 'datetime original is not found in exif')
                     continue
                 
+                # 撮影時刻をUTCに変換
+                offset_time = exif.get_offsettime_original(f)
+                if offset_time is None:
+                    print(indent, f'offset-time original is not found in exif, will use {args.offsettime} from argument')
+                    offset_time = args.offsettime
+                else:
+                    print(indent, f'offset-time original found: {offset_time}')
+                dt_org_utc = dt_helper.offset_to_utc(dt_org, -offset_time)
+                
                 # ロケーション履歴から撮影時刻と近いGPS情報を検索
-                gps = loc.find_nearest(dt_org)
+                gps = loc.find_nearest(dt_org_utc)
                 if gps is not None:
-                    dt_utc = dt_helper.jst_to_utc_with_time(gps[0])
-                    exif.set_gps_info(f, dt_utc, gps[1], gps[2])
+                    exif.set_gps_info(f, gps[0], gps[1], gps[2])
                     print(
                         indent,
                         'GPS added',
-                        gps[0].strftime('%y/%m/%d-%H:%M:%S'),
+                        gps[0].strftime('%y/%m/%d-%H:%M:%S') + '(UTC)',
                         gps[1],
                         gps[2])
                     if args.footprint:
-                        if not args.keyword:
-                            print(indent, 'footprint requested but keyword is null or empty')
-                        else:
-                            exif.set_keywords(f, str(args.keyword))
-                            print(indent, 'keyword added', args.keyword)
+                        exif.set_keywords(f, str(FOOTPRINT_KEYWORD))
+                        print(indent, 'keyword added', FOOTPRINT_KEYWORD)
                     n_new += 1
                 else:
-                    print(indent, 'could not find nearest data', dt_org)
+                    print(indent, 'could not find nearest data', dt_org_utc)
                     n_notdata += 1
         except Exception as ex:
             print('[ERROR]', traceback.format_exc())
             n_err += 1
             
-    
-    # 処理結果を出力
-    print(f'DONE: GPS added={n_new}, Already has GPS={n_has}, No data={n_notdata}, Error={n_err}')
+    # Print report
+    print('REPORT:')
+    print(indent, f'{n_new} GPS added | updated')
+    print(indent, f'{n_has} already has GPS, not updated')
+    print(indent, f'{n_notdata} could not find GPS')
+    print(indent, f'{n_err} Error')
  
 if __name__ == "__main__":
     args = parse_arguments()

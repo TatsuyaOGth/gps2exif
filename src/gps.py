@@ -22,6 +22,14 @@ class GoogleLocationHistory:
             if d[0] > dt_utc:
                 return d
         return None
+        
+    def get_data_info(self):
+        if self.data is None:
+            return 'No data'
+        n = len(self.data)
+        first_dt = self.data[0][0].strftime('%Y/%m/%d-%H:%M:%S')
+        last_dt = self.data[n-1][0].strftime('%Y/%m/%d-%H:%M:%S')
+        return f'Length={n}, First={first_dt}, Last={last_dt}'
 
     def print(self):
         for key in self.data.keys():
